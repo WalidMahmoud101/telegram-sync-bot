@@ -256,6 +256,7 @@ async def sync_chat(client, entity, chat_name, chat_dir, state, state_file, args
     scan_from = last_id
     sem = asyncio.Semaphore(3)  # 3 concurrent downloads
     pending = []
+    failed = []  # retried once more at the end with a fresh file reference
 
     async def download_one(msg, fname, target, passwords):
         nonlocal total
@@ -275,7 +276,7 @@ async def sync_chat(client, entity, chat_name, chat_dir, state, state_file, args
                         last_pct[0] = pct
                         log.info("  %d%% of %s", pct, fname)
 
-            for retry in range(2):
+            for retry in range(3):
                 try:
                     await msg.download_media(
                         file=str(target),
@@ -287,9 +288,19 @@ async def sync_chat(client, entity, chat_name, chat_dir, state, state_file, args
                     STATS.update(f"FloodWait {e.seconds}s")
                     await asyncio.sleep(e.seconds + 1)
                 except Exception as e:
-                    log.error("Download failed %s: %s", fname, e)
+                    # file reference probably expired (long queues) - get a fresh one
+                    log.warning("Download attempt failed %s: %s - refreshing reference", fname, e)
+                    try:
+                        fresh = await client.get_messages(entity, ids=msg.id)
+                        if fresh and fresh.file:
+                            msg = fresh
+                            continue
+                    except Exception:
+                        pass
+                    failed.append((msg.id, fname, target, passwords))
                     return
             else:
+                failed.append((msg.id, fname, target, passwords))
                 return
             log.info("Downloaded %s", target)
             if size_mb < 20:  # small files have no progress callback
@@ -360,6 +371,15 @@ async def sync_chat(client, entity, chat_name, chat_dir, state, state_file, args
             break
     if pending:
         await asyncio.gather(*pending)
+    # last pass: retry failed downloads with fresh file references
+    for msg_id, fname, target, passwords in list(failed):
+        try:
+            fresh = await client.get_messages(entity, ids=msg_id)
+            if fresh and fresh.file:
+                log.info("Retrying failed download: %s", fname)
+                await download_one(fresh, fname, target, passwords)
+        except Exception as e:
+            log.error("Final retry failed %s: %s", fname, e)
     if not args.dry_run:
         async with STATE_LOCK:
             state[key] = new_last
