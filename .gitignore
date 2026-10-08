@@ -1,0 +1,21 @@
+# Secrets & private data - NEVER commit these
+.env
+*.session
+*.session-journal
+state.json
+channels.txt
+telegram_daily_sync.py
+tg_mcp_server.py
+
+# Logs
+sync.log
+bot_watchdog.log
+cron.log
+
+# Downloads
+downloads/
+
+# Python
+venv/
+__pycache__/
+*.pyc
