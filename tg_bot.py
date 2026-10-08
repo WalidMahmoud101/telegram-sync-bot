@@ -48,6 +48,7 @@ HELP = """🤖 TG Sync commands:
 /add <id|@username> — add a channel & download its archive
 /remove <id|@username> — remove a channel from the list
 /list — show configured channels
+/channels — full list of your channels/groups with IDs (sends channels.txt)
 /status — files, disk usage, current activity
 /sync — force a full sync now
 /help — this message"""
@@ -263,6 +264,24 @@ class Daemon:
             f"🗑 removed {name or arg}" if removed else f"ℹ️ {arg} was not in the list"
         )
 
+    async def cmd_channels(self, event):
+        msg = await event.reply("🔎 scanning your channels...")
+        out_file = BASE / "channels.txt"
+        count = 0
+        with out_file.open("w", encoding="utf-8") as fh:
+            fh.write("id\tusername\ttype\tname\n")
+            async for d in self.client.iter_dialogs(archived=None):
+                if not d.is_channel:  # channels and groups only, no private chats
+                    continue
+                uname = getattr(d.entity, "username", None)
+                kind = "group" if d.is_group else "channel"
+                fh.write(f"{d.id}\t{'@' + uname if uname else '-'}\t{kind}\t{d.name}\n")
+                count += 1
+        await msg.edit(f"📋 found {count} channels/groups - sending the file")
+        await self.client.send_file(
+            "me", str(out_file), caption=f"📋 channels list ({count}) - use /add <id>"
+        )
+
     async def cmd_list(self, event):
         lines = ["📋 Configured channels:"]
         for ch in self.channels:
@@ -295,6 +314,8 @@ class Daemon:
             await self.cmd_remove(event, arg)
         elif cmd == "/list":
             await self.cmd_list(event, arg)
+        elif cmd == "/channels":
+            asyncio.create_task(self.cmd_channels(event))
         elif cmd == "/status":
             await self.cmd_status(event)
         elif cmd == "/sync":
