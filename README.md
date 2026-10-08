@@ -77,6 +77,7 @@ venv\Scripts\python tg_bot.py
 | `/add -100xxx` or `/add @user` | Adds a channel, replies with its name, downloads its archive immediately |
 | `/remove -100xxx` | Removes a channel from the list |
 | `/list` | Shows configured channels |
+| `/channels` | Full list of your channels/groups with IDs (sends channels.txt) |
 | `/status` | File count, disk usage, current activity, next run time |
 | `/sync` | Forces a full sync right now |
 | `/help` | Shows the command list |
@@ -215,6 +216,7 @@ venv\Scripts\python tg_bot.py
 | `/add -100xxx` أو `/add @user` | يضيف قناة، يرد باسمها، وينزّل أرشيفها فوراً |
 | `/remove -100xxx` | يشيل قناة من الليستة |
 | `/list` | القنوات المضافة |
+| `/channels` | ليستة كل قنواتك/جروباتك بالـ IDs (بيبعت channels.txt) |
 | `/status` | عدد الملفات، المساحة، النشاط الحالي، المعاد الجاي |
 | `/sync` | مزامنة كاملة فورية |
 | `/help` | قائمة الأوامر |
